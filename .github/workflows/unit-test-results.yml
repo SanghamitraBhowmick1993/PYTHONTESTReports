@@ -1,0 +1,87 @@
+Skip to content
+Search or jump to…
+Pull requests
+Issues
+Marketplace
+Explore
+ 
+@SanghamitraBhowmick1993 
+EnricoMi
+/
+publish-unit-test-result-action
+Public
+Code
+Issues
+12
+Pull requests
+3
+Actions
+Projects
+Security
+Insights
+publish-unit-test-result-action/.github/workflows/unit-test-results.yml
+@dependabot
+dependabot Bump hmarr/debug-action from 2.0.0 to 2.0.1 (#182)
+Latest commit 5c9ebfa on 1 Feb
+ History
+ 3 contributors
+@EnricoMi@dependabot@jgiannuzzi
+47 lines (39 sloc)  1.31 KB
+   
+name: Unit Test Results (reference)
+
+on:
+  workflow_run:
+    workflows: ["CI/CD"]
+    types:
+      - completed
+
+jobs:
+  debug:
+    name: Debug
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Debug Action
+        uses: hmarr/debug-action@v2.0.1
+
+  unit-test-results:
+    name: Unit Test Results (reference)
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion != 'skipped'
+
+    steps:
+      - name: Download and Extract Artifacts
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        run: |
+          mkdir -p artifacts && cd artifacts
+          artifacts_url=${{ github.event.workflow_run.artifacts_url }}
+          gh api "$artifacts_url" -q '.artifacts[] | [.name, .archive_download_url] | @tsv' | while read artifact
+          do
+            IFS=$'\t' read name url <<< "$artifact"
+            gh api $url > "$name.zip"
+            unzip -d "$name" "$name.zip"
+          done
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action/composite@master
+        with:
+          commit: ${{ github.event.workflow_run.head_sha }}
+          check_name: Unit Test Results (reference)
+          event_file: artifacts/Event File/event.json
+          event_name: ${{ github.event.workflow_run.event }}
+          files: "artifacts/**/*.xml"
+          log_level: DEBUG
+© 2022 GitHub, Inc.
+Terms
+Privacy
+Security
+Status
+Docs
+Contact GitHub
+Pricing
+API
+Training
+Blog
+About
+Loading complete
